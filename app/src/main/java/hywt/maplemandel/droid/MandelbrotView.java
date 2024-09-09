@@ -191,7 +191,7 @@ class MandelbrotView extends View {
             float focusX = detector.getFocusX();
             float focusY = detector.getFocusY();
             float scaleFactorChange = detector.getScaleFactor();
-            scaleFactor *= scaleFactorChange;
+            if (!(scaleFactor < 1 && magnification * scaleFactor < 0.5)) scaleFactor *= scaleFactorChange;
 
 
             // Translate the center point based on the scale factor change
