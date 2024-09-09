@@ -33,6 +33,7 @@ class MandelbrotView extends View {
 
     private ScaleGestureDetector scaleDetector;
     private Bitmap bitmap;
+    private Bitmap oldBitmap;
     private int[] colors;
     private int maxIterations;
     private GestureDetector panDetector;
@@ -48,7 +49,6 @@ class MandelbrotView extends View {
 
     public MandelbrotView(Context context) {
         super(context);
-        setDrawingCacheEnabled(true);
         setBackgroundColor(Color.BLACK);
         scaleDetector = new ScaleGestureDetector(context, new ScaleListener());
 
@@ -74,6 +74,8 @@ class MandelbrotView extends View {
         if (width == 0 || height == 0) return;
 
         bitmap = Bitmap.createBitmap(width, height, Bitmap.Config.ARGB_8888);
+        oldBitmap = Bitmap.createBitmap(width, height, Bitmap.Config.ARGB_8888);
+
         maxIterations = 256;
         colors = new int[maxIterations + 1];
 
@@ -91,32 +93,16 @@ class MandelbrotView extends View {
     }
 
     private void updateMandelbrotAsync() {
-        Canvas canvas = new Canvas(bitmap);
-        buildDrawingCache();
-        canvas.drawBitmap(getDrawingCache(), 0, 0, paint);
-
-        translateX = 0;
-        translateY = 0;
-        scaleFactor = 1;
-        if (drawer != null) drawer.cancel(true);
         drawer = executorService.submit(() -> {
             for (int x = 0; x < width; x++) {
                 for (int y = 0; y < height; y++) {
-                    double cx = getCx(x);
-                    double cy = getCy(y);
-                    double zx = cx;
-                    double zy = cy;
-                    int iteration = 0;
-
-                    while (zx * zx + zy * zy < 4.0 && iteration < maxIterations) {
-                        double temp = zx * zx - zy * zy + cx;
-                        zy = 2.0f * zx * zy + cy;
-                        zx = temp;
-                        iteration++;
-                    }
+                    int iteration = getIteration(x, y);
 
                     int color = colors[iteration];
                     bitmap.setPixel(x, y, color);
+                    if (Thread.currentThread().isInterrupted()) {
+                        return; // Exit if the task was cancelled
+                    }
                 }
                 invalidate();
             }
@@ -124,12 +110,28 @@ class MandelbrotView extends View {
         });
     }
 
+    private int getIteration(int x, int y) {
+        double cx = getCx(x);
+        double cy = getCy(y);
+        double zx = cx;
+        double zy = cy;
+        int iteration = 0;
+
+        while (zx * zx + zy * zy < 4.0 && iteration < maxIterations) {
+            double temp = zx * zx - zy * zy + cx;
+            zy = 2.0f * zx * zy + cy;
+            zx = temp;
+            iteration++;
+        }
+        return iteration;
+    }
+
     private double getCy(double y) {
-        return (y - height / 2) * baseStep / magnification + centerY;
+        return (y - height / 2f) * baseStep / magnification + centerY;
     }
 
     private double getCx(double x) {
-        return (x - width / 2) * baseStep / magnification + centerX;
+        return (x - width / 2f) * baseStep / magnification + centerX;
     }
 
     @Override
@@ -159,11 +161,25 @@ class MandelbrotView extends View {
             // Apply magnification
             magnification *= scaleFactor;
 
+            synchronized (this) {
+                Canvas canvas = new Canvas(oldBitmap);
+                draw(canvas);
+                Canvas canvas1 = new Canvas(bitmap);
+                canvas1.drawBitmap(oldBitmap, 0, 0, paint);
+
+                translateX = 0;
+                translateY = 0;
+                scaleFactor = 1;
+            }
+
             updateMandelbrotAsync();
 //            invalidate();
 
             Log.e("center", "centerX: " + centerX + ", centerY: " + centerY);
+        } else {
+            if (drawer != null) drawer.cancel(true);
         }
+
         panDetector.onTouchEvent(event);
         scaleDetector.onTouchEvent(event);
         return true;
