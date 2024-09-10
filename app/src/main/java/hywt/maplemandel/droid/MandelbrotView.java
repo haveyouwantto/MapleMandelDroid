@@ -5,7 +5,6 @@ import android.graphics.Bitmap;
 import android.graphics.Canvas;
 import android.graphics.Color;
 import android.graphics.Paint;
-import android.graphics.Rect;
 import android.os.Handler;
 import android.os.Looper;
 import android.util.Log;
@@ -17,10 +16,8 @@ import android.view.View;
 import androidx.annotation.NonNull;
 import androidx.annotation.Nullable;
 
-import java.math.BigDecimal;
 import java.util.concurrent.ExecutorService;
 import java.util.concurrent.Executors;
-import java.util.concurrent.Future;
 
 import hywt.maplemandel.core.DrawCall;
 import hywt.maplemandel.core.Mandelbrot;
@@ -43,7 +40,7 @@ class MandelbrotView extends View {
     private double baseStep;
 
     private Handler handler = new Handler(Looper.getMainLooper());
-//    private ExecutorService executorService = Executors.newSingleThreadExecutor();
+    private ExecutorService executorService = Executors.newSingleThreadExecutor();
 //    private Future<?> drawer;
 
     private Mandelbrot mandelbrot;
@@ -65,10 +62,11 @@ class MandelbrotView extends View {
                 return super.onScroll(e1, e2, distanceX, distanceY);
             }
         });
-        generateMandelbrot();
+        initializeMandelbrot();
+
     }
 
-    private void generateMandelbrot() {
+    public void initializeMandelbrot() {
         width = getWidth();
         height = getHeight();
         int min = Math.min(width, height);
@@ -81,7 +79,6 @@ class MandelbrotView extends View {
         oldBitmap = Bitmap.createBitmap(width, height, Bitmap.Config.ARGB_8888);
 
         mandelbrot = new Mandelbrot(width, height);
-        mandelbrot.setMaxIter(1024);
         Canvas canvas = new Canvas(bitmap);
         drawCall = new DrawCall(width, height) {
             private Paint paint = new Paint();
@@ -90,13 +87,13 @@ class MandelbrotView extends View {
             public synchronized void draw(int x, int y, int w, int h, hywt.maplemandel.core.Color color) {
                 paint.setARGB(255, color.r, color.g, color.b);
                 canvas.drawRect(x, y, x + w, y + h, paint);
-                invalidate(x, y, x + w, y + h);
+                executorService.submit(() -> invalidate(x, y, x + w, y + h));
             }
 
             @Override
             public synchronized void draw(int x, int y, hywt.maplemandel.core.Color color) {
                 bitmap.setPixel(x, y, Color.rgb(color.r, color.g, color.b));
-                invalidate(x, y, x + 1, y + 1);
+                executorService.submit(() -> invalidate(x, y, x + 1, y + 1));
             }
         };
 
@@ -111,7 +108,7 @@ class MandelbrotView extends View {
     @Override
     protected void onDraw(Canvas canvas) {
         super.onDraw(canvas);
-        if (bitmap == null) generateMandelbrot();
+        if (bitmap == null) initializeMandelbrot();
         canvas.save();
         canvas.translate(translateX, translateY);
         canvas.scale(scaleFactor, scaleFactor);
