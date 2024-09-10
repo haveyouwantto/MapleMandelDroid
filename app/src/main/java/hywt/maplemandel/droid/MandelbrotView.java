@@ -63,6 +63,12 @@ class MandelbrotView extends View {
             }
         });
         initializeMandelbrot();
+        executorService.submit(()->{
+            while (true){
+                invalidate();
+                Thread.sleep(20);
+            }
+        });
 
     }
 
@@ -87,13 +93,11 @@ class MandelbrotView extends View {
             public synchronized void draw(int x, int y, int w, int h, hywt.maplemandel.core.Color color) {
                 paint.setARGB(255, color.r, color.g, color.b);
                 canvas.drawRect(x, y, x + w, y + h, paint);
-                executorService.submit(() -> invalidate(x, y, x + w, y + h));
             }
 
             @Override
             public synchronized void draw(int x, int y, hywt.maplemandel.core.Color color) {
                 bitmap.setPixel(x, y, Color.rgb(color.r, color.g, color.b));
-                executorService.submit(() -> invalidate(x, y, x + 1, y + 1));
             }
         };
 
