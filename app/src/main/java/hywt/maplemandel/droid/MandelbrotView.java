@@ -99,6 +99,11 @@ class MandelbrotView extends View {
             public synchronized void draw(int x, int y, hywt.maplemandel.core.Color color) {
                 bitmap.setPixel(x, y, Color.rgb(color.r, color.g, color.b));
             }
+
+            @Override
+            public void onCompleted() {
+
+            }
         };
 
         // Run Mandelbrot calculation on a background thread
@@ -106,7 +111,7 @@ class MandelbrotView extends View {
     }
 
     public void updateMandelbrotAsync() {
-        mandelbrot.startDraw(drawCall, null);
+        mandelbrot.startDraw(drawCall);
     }
 
     @Override
@@ -137,13 +142,6 @@ class MandelbrotView extends View {
             ).toDeepComplex());
 
             mandelbrot.gotoLocation(center, mandelbrot.getScale().div(scaleFactor));
-
-//            // Transform screen coordinates to the original unscaled/untranslated coordinate system
-//            centerX = getCx((screenCenterX - translateX) / scaleFactor);
-//            centerY = getCy((screenCenterY - translateY) / scaleFactor);
-//
-//            // Apply magnification
-//            magnification *= scaleFactor;
 
             synchronized (this) {
                 Canvas canvas = new Canvas(oldBitmap);
