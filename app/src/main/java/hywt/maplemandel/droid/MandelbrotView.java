@@ -16,6 +16,7 @@ import android.view.View;
 import androidx.annotation.NonNull;
 import androidx.annotation.Nullable;
 
+import java.util.concurrent.Callable;
 import java.util.concurrent.ExecutorService;
 import java.util.concurrent.Executors;
 
@@ -85,6 +86,7 @@ class MandelbrotView extends View {
         oldBitmap = Bitmap.createBitmap(width, height, Bitmap.Config.ARGB_8888);
 
         mandelbrot = new Mandelbrot(width, height);
+        mandelbrot.setMultiThreaded(false);
         Canvas canvas = new Canvas(bitmap);
         drawCall = new DrawCall(width, height) {
             private Paint paint = new Paint();
@@ -99,11 +101,6 @@ class MandelbrotView extends View {
             public synchronized void draw(int x, int y, hywt.maplemandel.core.Color color) {
                 bitmap.setPixel(x, y, Color.rgb(color.r, color.g, color.b));
             }
-
-            @Override
-            public void onCompleted() {
-
-            }
         };
 
         // Run Mandelbrot calculation on a background thread
@@ -111,7 +108,7 @@ class MandelbrotView extends View {
     }
 
     public void updateMandelbrotAsync() {
-        mandelbrot.startDraw(drawCall);
+        mandelbrot.startDraw(drawCall, () -> null);
     }
 
     @Override
